@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Native unit tests
+        run: cargo test --locked
+      - name: Build WASM component
+        run: ./build.sh
+      - name: Checksums
+        run: sha256sum plugin.wasm plugin.json > SHA256SUMS
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            plugin.wasm
+            plugin.json
+            README.md
+            SHA256SUMS
+          generate_release_notes: true
