@@ -12,12 +12,5 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-# Optionally refresh the vendored WIT files from a local
-# memeloop-token-center checkout:  MTC_REPO=/path/to/memeloop-token-center ./build.sh
-if [ -n "${MTC_REPO:-}" ]; then
-  cp "$MTC_REPO/wit/wire-shim.wit" wit/wire-shim.wit
-  cp "$MTC_REPO/wit/token-center.wit" wit/deps/token-center-0.2.0/token-center.wit
-fi
-
 cargo build --release --target wasm32-unknown-unknown
 cargo run --release --manifest-path componentize/Cargo.toml --   target/wasm32-unknown-unknown/release/mtc_claude_code_wire.wasm   plugin.wasm
