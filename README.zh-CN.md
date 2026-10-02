@@ -1,82 +1,26 @@
-# claude-code-wire
+# Claude 请求隐私插件
 
-[English README](README.md)
+[English](README.md)
 
-[memeloop-token-center](https://github.com/memeloop-online/memeloop-token-center)
-的 wire-shim 插件：把发往 anthropic-claude（Claude 订阅 OAuth）上游的
-Anthropic Messages 请求，在网关出口处改写成与官方 Claude Code CLI 完全一致的
-线上格式（wire format），让上游看到字节级一致的流量，无论实际客户端是什么。
+本 MTC 插件从发往 Anthropic Messages 的请求中移除可选的 `metadata.user_id` 追踪字段，保留模型、系统提示词、消息、工具和未知协议字段。没有该字段时，请求原始字节保持不变。插件不会添加客户端指纹、计费标记、会话标识或请求头，也不会一律拒绝请求。
 
-转换逻辑逐比特对齐 [pi-black](https://github.com/paoloanzn/pi-black) 参考实现：
+插件不声明任何能力，不调用网络、文件系统、日志或存储接口。它只能处理网关已经收到的请求，不能拦截客户端通过其他连接直接发送的遥测，也不会自动识别或删除用户提示词中的秘密。
 
-- **system 块手术**：剥离客户端自带的旧 billing / Agent SDK / legacy 块，
-  然后在最前面插入新的 billing 块（含 cc_version 指纹与 cch 校验和）和
-  Agent SDK 块；
-- **cch 校验和**：对最终序列化 body（model 置空、删除 max_tokens）做 seeded
-  XXH64，取低 20 bit 的 5 位 hex。宿主逐字节转发插件输出、绝不重新序列化，
-  因此校验和在线上恒自洽；
-- **规范请求头**：user-agent、x-app、x-claude-code-session-id、每请求随机的
-  x-client-request-id、x-stainless-* SDK 指纹系列。宿主在应用这些头之前会先
-  剥离客户端自带的指纹头，非官方 SDK（比如 Python 客户端）的值不会泄漏到上游；
-- **可选身份元数据**：metadata.user_id 携带 device_id / account_uuid /
-  稳定派生的 session_id。
+## 设置
 
-**fail-closed**：请求无法安全改写、或插件被禁用时，宿主直接拒绝请求——
-未改写的请求绝不会被发往订阅 OAuth 上游。
+两项默认均开启：
 
-## 构建
+| 设置 | 用途 |
+| --- | --- |
+| `enabled` | 启用请求隐私处理；关闭后按原始字节透传。 |
+| `remove_user_id` | 移除用户追踪标识；客户端明确依赖该字段时可以关闭。 |
 
-    rustup target add wasm32-unknown-unknown
-    ./build.sh        # 产出 plugin.wasm
-    cargo test        # 原生单元测试（XXH64 向量、指纹、cch 自洽）
+旧版指纹设置会被忽略，不会注入身份信息。配置或请求不是合法 JSON 时，返回不包含原始内容的错误说明。
 
-从本地 MTC 检出刷新 vendored WIT 定义：
+## 登录与安装
 
-    MTC_REPO=/path/to/memeloop-token-center ./build.sh
+订阅 OAuth 登录由 MTC 账号连接流程处理，并由账号所有者本人批准。插件不接收或管理订阅凭据。移除追踪字段不代表获得模型授权，也不能保证上游接受请求。
 
-## 安装
+使用同一份已审查 CI 构建物或 Release 中的 `plugin.wasm` 与 `plugin.json`。先在隔离环境验证宿主兼容性，再为账号启用。不要混用旧版指纹改写构建物、清单和当前组件。
 
-把 plugin.json + plugin.wasm（+ 本 README）作为一个插件包目录，挂载到宿主的
-插件目录（MTC_PLUGIN_DIR，或宿主 plugins/README.md 里的 OCI 安装流程）。
-插件要求宿主的 WIT 0.3.0 wire-shim ABI。
-
-## 配置
-
-所有配置项都有对齐 Claude Code 2.1.258 的安全默认值，可全局或按租户覆盖：
-
-| 配置项 | 默认值 | 说明 |
-| --- | --- | --- |
-| enabled | true | 关闭会拒绝请求（fail-closed），不会放行未改写流量 |
-| claude_code_version | 2.1.258 | 嵌入 user-agent 与 cc_version 指纹 |
-| entrypoint | sdk-cli | billing 的 cc_entrypoint 值 |
-| device_id | — | 64 位小写 hex，取自该账号 ~/.claude.json 的 userID；必须与 account_uuid 成对配置 |
-| account_uuid | — | Claude 账号 UUID |
-| stainless_* | js / 0.60.0 / MacOS / arm64 / node / v22.14.0 / 600 | x-stainless-* 指纹取值；同一账号应保持稳定 |
-
-配置变更在请求时生效（有界 5 秒缓存），版本号升级无需重启网关。
-
-## 客户端侧遥测（网关拦不到的部分）
-
-Claude Code 客户端会**直连** Statsig/Sentry 遥测服务，不经过网关。如果客户端
-本身就是 Claude Code，请务必设置：
-
-    export DISABLE_TELEMETRY=1
-    export DISABLE_ERROR_REPORTING=1
-    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
-
-或在 DNS/防火墙层屏蔽遥测域名。直接调网关 Anthropic 接口的非 Claude Code
-客户端没有这个问题。
-
-## 出口 IP
-
-请求指纹再完美，源 IP 在不支持地区一样会被封号。请给 anthropic-claude 上游
-账号配置支持地区的 SOCKS5 出口代理（登录时的 proxy_url，仅接受 socks5h +
-私有 IP 字面量）。
-
-## 风险声明
-
-本插件让订阅流量在线上看起来与官方客户端一致。Anthropic 的风控策略随时可能
-变化（新版本号、新指纹维度）；claude_code_version 需要跟随官方 Claude Code
-版本更新。使用前请自行评估服务条款风险。
-
-线上格式的逐字节细节见 [docs/protocol.zh-CN.md](docs/protocol.zh-CN.md)。
+测试与构建由 GitHub Actions 执行，覆盖追踪字段移除、原样透传、推理内容保持和旧配置兼容。版本发布会同时提供组件、清单与校验和。
