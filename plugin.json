@@ -13,10 +13,23 @@
       "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
-        "additionalProperties": false,
-        "properties": {}
+        "additionalProperties": true,
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "启用请求隐私处理",
+            "description": "仅移除所选追踪字段；保留模型、提示词、工具及其他请求内容。",
+            "default": true
+          },
+          "remove_user_id": {
+            "type": "boolean",
+            "title": "不发送用户追踪标识",
+            "description": "移除 metadata.user_id。客户端明确依赖此字段时可关闭。",
+            "default": true
+          }
+        }
       },
-      "default": {}
+      "default": {"enabled": true, "remove_user_id": true}
     }
   }
 }
