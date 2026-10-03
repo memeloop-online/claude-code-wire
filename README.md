@@ -24,3 +24,5 @@ OAuth login belongs to MTC's account connection flow and must be approved by the
 Use `plugin.wasm` and `plugin.json` from the same reviewed CI artifact or release. Validate against the target MTC version in an isolated environment before enabling it for an account. Do not combine old fingerprint-rewriting builds or manifests with this component.
 
 GitHub Actions runs privacy regression tests and builds the WASM component. Tests cover tracking removal, exact pass-through, preservation of inference content, and legacy configuration compatibility. Tagged releases publish the component, manifest, and checksums together.
+
+For signed OCI packaging, exact signer trust, digest evidence, and an isolated MTC installer rehearsal, see [OCI release and installation](docs/oci-release.md). Official packages are published from master; candidate packages use a separate repository and branch identity.
