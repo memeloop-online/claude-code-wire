@@ -1,0 +1,14 @@
+{
+  "version": "1.0.1",
+  "source_revision": "ceba7ef7c7a961a59574eb4fb24bd90b7eec2193",
+  "files": {
+    "plugin.json": "95aa1c2ec715a766e865d861b6e9b00cb157c1f77056fab300fc55fa3925c68e",
+    "plugin.wasm": "51043af426632581a218c227a0f90b2de2253d27b5438519098c44d965c01f3c"
+  },
+  "installer": {
+    "repository": "ghcr.io/memeloop-online/memeloop-token-center-plugin-installer",
+    "digest": "sha256:df6908c6e736ec150e64882bba02ac474637fe9fe9e31cc6b9452f7e6c91d6c0",
+    "source_revision": "2cd0580f6546044dcb40f06ecf53b4271bba5bde",
+    "evidence": "https://github.com/memeloop-online/memeloop-token-center/actions/runs/37108937447"
+  }
+}
