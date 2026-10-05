@@ -6,7 +6,7 @@ The package has artifact type `application/vnd.memeloop.token-center.plugin.v1`,
 
 ## Publication and trust
 
-PRs download and check the pinned release bytes without registry write or OIDC permissions. Pushes to `release/oci-*` exercise signing and installation in `ghcr.io/memeloop-online/claude-code-wire-candidate`; this is a rehearsal package. Master pushes or a manual master dispatch publish `ghcr.io/memeloop-online/claude-code-wire`. The `v1.0.1` tag is set only after successful signature verification, negative signature testing, and installation. Consumers must pin the resulting digest, not the tag.
+PRs download and check the pinned release bytes without registry write or OIDC permissions. Pushes to `release/oci-*` exercise signing and installation in `ghcr.io/memeloop-online/claude-code-wire-candidate`; this is a rehearsal package. Master pushes or a manual master dispatch publish `ghcr.io/memeloop-online/claude-code-wire`. The existing `v1.0.1` GitHub source tag and Release are inputs to this workflow and are not changed by it. On a master run, the workflow first uploads the OCI artifact under `:sha-$GITHUB_SHA`, then signs and verifies its digest, confirms that an incorrect signer is rejected, and completes real-installer acceptance. Only after all these steps succeed does it update the official OCI `:v1.0.1` alias to that digest. A failed run may leave the SHA reference but does not update the version alias. Consumers must pin the resulting digest, not the alias.
 
 The official certificate identity is exactly:
 
