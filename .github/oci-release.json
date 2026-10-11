@@ -1,8 +1,8 @@
 {
-  "version": "1.0.1",
-  "source_revision": "ceba7ef7c7a961a59574eb4fb24bd90b7eec2193",
+  "version": "1.1.0",
+  "source_revision": "ab7df5591b8afbb73d8b2a164c90df6e7593ef78",
   "files": {
-    "plugin.json": "95aa1c2ec715a766e865d861b6e9b00cb157c1f77056fab300fc55fa3925c68e",
+    "plugin.json": "118cff3218b1d4512477d6fdef17001841a18c3393a81b586801cf39f5d21031",
     "plugin.wasm": "51043af426632581a218c227a0f90b2de2253d27b5438519098c44d965c01f3c"
   },
   "installer": {
