@@ -20,9 +20,11 @@ the pending session token, expiry, tenant/operator scope and idempotent completi
 handling. Reauthorization must keep the existing account and compare the declared
 `identity.url` response at `/account/uuid`; a different account must be rejected.
 
-The generic start API currently accepts an explicit `client` object from a global
-operator. The reviewed subscription client settings, extracted from the existing
-core Claude adapter, are:
+The manifest adopts the generic declarations introduced by host PR580. The
+generic start API uses `oauth_adapter.authorization_code.client_default` when
+the global operator omits an explicit `client`. This does not widen operator
+authorization. The public client settings, extracted from the existing core
+Claude adapter, are:
 
 ```json
 {
@@ -40,27 +42,32 @@ core Claude adapter, are:
 ```
 
 These scope names are the existing supplier contract, not plugin filesystem
-permissions. No client secret is needed. Current `oauth-adapter-v1` has no field
-for contributing fixed client settings: a generic, reviewed declarative default
-is needed for ordinary account-owner UI authorization. Do not inject unsupported
-fields into the signed manifest or silently use another provider's client.
+permissions. No client secret is contributed. The manifest selects JSON token
+exchange/refresh and inclusion of the host-verified state during exchange only.
+The authorization URL carries `code=true`. Identity reads declare only the
+`oauth-2025-04-20` beta; Messages requests declare that beta and version
+`2023-06-01`. These are typed fixed protocol headers, not arbitrary header or
+credential injection. The host owns state, PKCE, token storage and same-account
+checks. A changed installed OAuth declaration requires reconnection under the
+host's contract-drift policy.
 
-## Known blockers at core572
+## Host dependency and remaining activation gates
 
-Source baseline: `2746ed35b80233fe50a12b772b12217dabc08019`.
-The fragment and identity hooks alone do not establish end-to-end compatibility:
+Requires the PR580 generic backend contract, reviewed at
+`1f885ad45cd59957addadcc4de334b4fa82266a0`, in addition to core572's fragment and
+identity hooks. Older hosts do not support these new declarations; do not treat
+acceptance by an older parser as compatibility. Host mock tests passing is not
+supplier authorization or entitlement verification.
 
-| Host path | Exact gap requiring host-owner resolution |
+| Owner / path | Remaining responsibility |
 | --- | --- |
-| `src/oauth/authorization_code.rs`, completion and `prepare_token_request` | Generic exchange uses form encoding and omits state from the token body. The existing Claude adapter sends JSON including state; refresh also uses JSON. A reviewed generic encoding/state contract and HTTP mock coverage are needed. |
-| `src/oauth/authorization_code.rs`, `bind_declared_identity` | Generic identity GET has no declared extra headers. The existing Claude profile read sends `anthropic-beta: oauth-2025-04-20`. |
-| `src/api/upstreams/oauth_authorization_code.rs`, start reauthorization guard | Still rejects drivers other than Antigravity despite generic identity support. |
-| `src/api/proxy/routing/http.rs`, Anthropic header application | OAuth beta is added only for the built-in `anthropic-claude` driver, not the new contribution ID. Codex Responses callers cannot be expected to supply this supplier header. |
-| Generic start API and provider UI | Fixed client defaults and response-mode-driven paste/reauthorization UI must be available without Claude-specific branching. |
+| Host backend / PR580 | Deploy the reviewed generic contract; its mocks cover JSON exchange/refresh, state, declared identity headers, contract-bound reauthorization and Responses-to-Messages headers. |
+| Separate host UI owner / `web/src/types.ts`, `web/src/operator/authorizationCode.ts`, `AuthorizationCodeConnection.tsx`, `authorizationCodeCopy.ts`, original authorization-code e2e contracts | Add mode-driven `code#state` validation/copy, expose generic reauthorization from host capability, and represent the new declarations without provider-specific branching or browser persistence. |
+| Plugin release owner / `.github/oci-release.json` | Replace the 1.0.1 pin only with separately authorized, actual reviewed release hashes; source candidate packaging is not release-pin readiness. |
 
-The manifest uses only existing contribution fields. It cannot fix these gaps
-inside a request-body privacy guest. Do not enable this candidate for subscription
-accounts or retire the built-in until host HTTP-level mock acceptance covers
+This declaration adoption does not change the request-body privacy guest or host
+UI. Do not enable this candidate for subscription accounts or retire the built-in
+until host/UI compatibility and isolated installation acceptance cover
 authorization, profile identity, refresh, same-account reauthorization, Messages
 and Codex Responses, including errors, state mismatch and duplicate completion.
 No real OAuth or paid inference was performed for this change.
@@ -83,7 +90,7 @@ Local tests, builds and dependency installation are intentionally not run.
 PR OCI packaging builds candidate source bytes without publication. The existing
 keyless signing workflow, signer identities and fingerprint trust remain intact.
 `.github/oci-release.json` continues to pin the reviewed 1.0.1 release; production
-preparation fails closed when that manifest differs from source. Before merging
-for publication, a separately authorized release must replace that record with
+preparation fails closed when that manifest differs from source. Before publication,
+a separately authorized release must replace that record with
 reviewed 1.1.0 release bytes and checksums, after host acceptance. This PR creates
 no release/tag and publishes no production or candidate OCI image.

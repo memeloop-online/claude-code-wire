@@ -41,16 +41,33 @@
         "oauth_adapter": {
           "api_version": "oauth-adapter-v1",
           "flow_kind": "authorization_code_pkce",
-          "login_url": "https://claude.com/cai/oauth/authorize",
+          "login_url": "https://claude.com/cai/oauth/authorize?code=true",
           "poll_url": "https://platform.claude.com/v1/oauth/token",
           "refresh_url": "https://platform.claude.com/v1/oauth/token",
           "response_mode": "fragment_manual",
-          "identity": {"url": "https://api.anthropic.com/api/oauth/profile", "id_pointer": "/account/uuid"}
+          "authorization_code": {
+            "token_encoding": "json",
+            "include_state": true,
+            "client_default": {
+              "client_id": "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
+              "redirect_uri": "https://platform.claude.com/oauth/code/callback",
+              "scopes": ["org:create_api_key", "user:profile", "user:inference", "user:sessions:claude_code", "user:mcp_servers", "user:file_upload"]
+            }
+          },
+          "identity": {
+            "url": "https://api.anthropic.com/api/oauth/profile",
+            "id_pointer": "/account/uuid",
+            "headers": {"anthropic_beta": ["oauth-2025-04-20"]}
+          }
         },
         "request_compatibility": {
           "third_party": true,
           "responses_via_anthropic_messages_v1": true,
-          "codex_multi_agent_v2": true
+          "codex_multi_agent_v2": true,
+          "anthropic_messages_headers": {
+            "anthropic_version": "2023-06-01",
+            "anthropic_beta": ["oauth-2025-04-20"]
+          }
         },
         "codex_model_capabilities": {
           "version": "codex-model-capabilities-v1",
