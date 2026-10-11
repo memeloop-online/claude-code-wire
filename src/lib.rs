@@ -123,7 +123,9 @@ mod tests {
     fn optional_refresh_token_schema_matches_host_null_serialization() {
         let manifest: Value = serde_json::from_str(include_str!("../plugin.json")).unwrap();
         let schema = &manifest["contributions"]["providers"][0]["credential_schema"];
-        let types = schema["properties"]["refresh_token"]["type"].as_array().unwrap();
+        let types = schema["properties"]["refresh_token"]["type"]
+            .as_array()
+            .unwrap();
         let accepts = |value: &Value| {
             types.iter().any(|kind| match kind.as_str() {
                 Some("string") => value.is_string(),
@@ -134,7 +136,12 @@ mod tests {
         for valid in [serde_json::json!("fixture-refresh"), Value::Null] {
             assert!(accepts(&valid));
         }
-        for invalid in [serde_json::json!(false), serde_json::json!(42), serde_json::json!({}), serde_json::json!([])] {
+        for invalid in [
+            serde_json::json!(false),
+            serde_json::json!(42),
+            serde_json::json!({}),
+            serde_json::json!([]),
+        ] {
             assert!(!accepts(&invalid));
         }
         let required = schema["required"].as_array().unwrap();
@@ -169,6 +176,111 @@ mod tests {
     }
 
     #[test]
+    fn subscription_declarations_use_closed_generic_oauth_types() {
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct PublicClient {
+            client_id: String,
+            redirect_uri: String,
+            scopes: Vec<String>,
+        }
+        #[derive(serde::Deserialize)]
+        #[serde(rename_all = "snake_case")]
+        enum TokenEncoding {
+            Form,
+            Json,
+        }
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct AuthorizationCode {
+            token_encoding: TokenEncoding,
+            include_state: bool,
+            client_default: PublicClient,
+        }
+        let manifest: Value = serde_json::from_str(include_str!("../plugin.json")).unwrap();
+        let adapter = &manifest["contributions"]["providers"][0]["oauth_adapter"];
+        assert_eq!(
+            adapter["login_url"],
+            "https://claude.com/cai/oauth/authorize?code=true"
+        );
+        let declaration = &adapter["authorization_code"];
+        let parsed: AuthorizationCode = serde_json::from_value(declaration.clone()).unwrap();
+        assert!(matches!(parsed.token_encoding, TokenEncoding::Json));
+        assert!(parsed.include_state);
+        assert_eq!(
+            parsed.client_default.client_id,
+            "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+        );
+        assert_eq!(
+            parsed.client_default.redirect_uri,
+            "https://platform.claude.com/oauth/code/callback"
+        );
+        assert_eq!(
+            parsed.client_default.scopes,
+            [
+                "org:create_api_key",
+                "user:profile",
+                "user:inference",
+                "user:sessions:claude_code",
+                "user:mcp_servers",
+                "user:file_upload"
+            ]
+        );
+        for (field, invalid) in [
+            ("token_encoding", serde_json::json!("xml")),
+            ("token_encoding", Value::Null),
+            ("include_state", serde_json::json!("true")),
+            ("client_default", Value::Null),
+        ] {
+            let mut changed = declaration.clone();
+            changed[field] = invalid;
+            assert!(serde_json::from_value::<AuthorizationCode>(changed).is_err());
+        }
+        for field in ["client_secret", "authorization", "headers"] {
+            let mut changed = declaration.clone();
+            changed["client_default"][field] = serde_json::json!("forbidden");
+            assert!(serde_json::from_value::<AuthorizationCode>(changed).is_err());
+        }
+    }
+
+    #[test]
+    fn subscription_fixed_headers_exclude_credential_injection() {
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct FixedHeaders {
+            anthropic_version: Option<String>,
+            anthropic_beta: Vec<String>,
+        }
+        let manifest: Value = serde_json::from_str(include_str!("../plugin.json")).unwrap();
+        let provider = &manifest["contributions"]["providers"][0];
+        for (declaration, version) in [
+            (&provider["oauth_adapter"]["identity"]["headers"], None),
+            (
+                &provider["request_compatibility"]["anthropic_messages_headers"],
+                Some("2023-06-01"),
+            ),
+        ] {
+            let parsed: FixedHeaders = serde_json::from_value(declaration.clone()).unwrap();
+            assert_eq!(parsed.anthropic_version.as_deref(), version);
+            assert_eq!(parsed.anthropic_beta, ["oauth-2025-04-20"]);
+            for name in ["authorization", "cookie", "host", "x-api-key"] {
+                let mut changed = declaration.clone();
+                changed[name] = serde_json::json!("forbidden");
+                assert!(serde_json::from_value::<FixedHeaders>(changed).is_err());
+            }
+            for invalid in [
+                Value::Null,
+                serde_json::json!("oauth-2025-04-20"),
+                serde_json::json!([false]),
+            ] {
+                let mut changed = declaration.clone();
+                changed["anthropic_beta"] = invalid;
+                assert!(serde_json::from_value::<FixedHeaders>(changed).is_err());
+            }
+        }
+    }
+
+    #[test]
     fn responses_translation_retains_privacy_and_inference_content() {
         let manifest: Value = serde_json::from_str(include_str!("../plugin.json")).unwrap();
         let provider = &manifest["contributions"]["providers"][0];
@@ -177,7 +289,10 @@ mod tests {
             true
         );
         assert_eq!(provider["request_compatibility"]["third_party"], true);
-        assert_eq!(provider["request_compatibility"]["codex_multi_agent_v2"], true);
+        assert_eq!(
+            provider["request_compatibility"]["codex_multi_agent_v2"],
+            true
+        );
         let request = serde_json::json!({
             "model": "fixture-claude",
             "messages": [{"role": "assistant", "content": [
@@ -186,8 +301,7 @@ mod tests {
             "metadata": {"user_id": "fixture-identity"},
             "stream": true
         });
-        let result =
-            finalize_request(context("{}"), request.to_string(), "{}".into()).unwrap();
+        let result = finalize_request(context("{}"), request.to_string(), "{}".into()).unwrap();
         let sanitized: Value = serde_json::from_str(&result.request_json).unwrap();
         assert!(sanitized["metadata"].get("user_id").is_none());
         assert_eq!(sanitized["messages"], request["messages"]);
@@ -209,8 +323,14 @@ mod tests {
         let result = finalize_request(context("{}"), original.to_string(), "{}".into())
             .expect("valid request");
         let mut expected = original;
-        expected["metadata"].as_object_mut().unwrap().remove("user_id");
-        assert_eq!(serde_json::from_str::<Value>(&result.request_json).unwrap(), expected);
+        expected["metadata"]
+            .as_object_mut()
+            .unwrap()
+            .remove("user_id");
+        assert_eq!(
+            serde_json::from_str::<Value>(&result.request_json).unwrap(),
+            expected
+        );
         assert!(result.set_headers.is_empty());
     }
 
