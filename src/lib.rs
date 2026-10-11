@@ -95,6 +95,81 @@ mod tests {
     }
 
     #[test]
+    fn subscription_provider_coexists_with_builtin_privacy_processing() {
+        let manifest: Value = serde_json::from_str(include_str!("../plugin.json")).unwrap();
+        let providers = manifest["contributions"]["providers"].as_array().unwrap();
+        assert_eq!(providers.len(), 1);
+        let provider = &providers[0];
+        assert_ne!(provider["id"], "anthropic-claude");
+        let drivers = manifest["contributions"]["wire_shim"]["drivers"]
+            .as_array()
+            .unwrap();
+        assert!(drivers.contains(&provider["id"]));
+        assert!(drivers.contains(&serde_json::json!("anthropic-claude")));
+        assert_eq!(manifest["capabilities"], serde_json::json!([]));
+        assert_eq!(manifest["version"], env!("CARGO_PKG_VERSION"));
+        assert_eq!(
+            provider["credential_schema"]["properties"]["type"]["const"],
+            "oauth"
+        );
+        assert!(
+            provider["credential_schema"]["properties"]
+                .get("value")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn subscription_authorization_is_host_owned_and_identity_bound() {
+        let manifest: Value = serde_json::from_str(include_str!("../plugin.json")).unwrap();
+        let adapter = &manifest["contributions"]["providers"][0]["oauth_adapter"];
+        assert_eq!(adapter["flow_kind"], "authorization_code_pkce");
+        assert_eq!(adapter["response_mode"], "fragment_manual");
+        assert_eq!(
+            adapter["identity"]["url"],
+            "https://api.anthropic.com/api/oauth/profile"
+        );
+        let profile = serde_json::json!({
+            "account": {"uuid": "fixture-account"},
+            "organization": {"uuid": "wrong-organization"}
+        });
+        assert_eq!(
+            profile.pointer(adapter["identity"]["id_pointer"].as_str().unwrap()),
+            Some(&serde_json::json!("fixture-account"))
+        );
+        assert_eq!(adapter["poll_url"], adapter["refresh_url"]);
+        assert!(adapter.get("client_secret").is_none());
+    }
+
+    #[test]
+    fn responses_translation_retains_privacy_and_inference_content() {
+        let manifest: Value = serde_json::from_str(include_str!("../plugin.json")).unwrap();
+        let provider = &manifest["contributions"]["providers"][0];
+        assert_eq!(
+            provider["request_compatibility"]["responses_via_anthropic_messages_v1"],
+            true
+        );
+        assert_eq!(provider["request_compatibility"]["third_party"], true);
+        assert_eq!(provider["request_compatibility"]["codex_multi_agent_v2"], true);
+        let request = serde_json::json!({
+            "model": "fixture-claude",
+            "messages": [{"role": "assistant", "content": [
+                {"type": "tool_use", "id": "call-fixture", "name": "shell", "input": {"command": "pwd"}}
+            ]}],
+            "metadata": {"user_id": "fixture-identity"},
+            "stream": true
+        });
+        let result =
+            finalize_request(context("{}"), request.to_string(), "{}".into()).unwrap();
+        let sanitized: Value = serde_json::from_str(&result.request_json).unwrap();
+        assert!(sanitized["metadata"].get("user_id").is_none());
+        assert_eq!(sanitized["messages"], request["messages"]);
+        assert_eq!(sanitized["model"], request["model"]);
+        assert_eq!(sanitized["stream"], request["stream"]);
+        assert!(result.set_headers.is_empty());
+    }
+
+    #[test]
     fn removes_tracking_identity_without_changing_inference_content() {
         let original = serde_json::json!({
             "model": "claude-model",
