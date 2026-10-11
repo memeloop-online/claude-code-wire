@@ -29,7 +29,7 @@
           "properties": {
             "type": {"const": "oauth"},
             "access_token": {"type": "string", "minLength": 1, "writeOnly": true},
-            "refresh_token": {"type": "string", "writeOnly": true},
+            "refresh_token": {"type": ["string", "null"], "writeOnly": true},
             "expires_at": {"type": "integer", "description": "Unix milliseconds"},
             "header": {"const": "authorization"},
             "prefix": {"const": "Bearer "},

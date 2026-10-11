@@ -120,6 +120,33 @@ mod tests {
     }
 
     #[test]
+    fn optional_refresh_token_schema_matches_host_null_serialization() {
+        let manifest: Value = serde_json::from_str(include_str!("../plugin.json")).unwrap();
+        let schema = &manifest["contributions"]["providers"][0]["credential_schema"];
+        let types = schema["properties"]["refresh_token"]["type"].as_array().unwrap();
+        let accepts = |value: &Value| {
+            types.iter().any(|kind| match kind.as_str() {
+                Some("string") => value.is_string(),
+                Some("null") => value.is_null(),
+                _ => false,
+            })
+        };
+        for valid in [serde_json::json!("fixture-refresh"), Value::Null] {
+            assert!(accepts(&valid));
+        }
+        for invalid in [serde_json::json!(false), serde_json::json!(42), serde_json::json!({}), serde_json::json!([])] {
+            assert!(!accepts(&invalid));
+        }
+        let required = schema["required"].as_array().unwrap();
+        assert!(!required.contains(&serde_json::json!("refresh_token")));
+        assert!(required.contains(&serde_json::json!("access_token")));
+        assert!(required.contains(&serde_json::json!("expires_at")));
+        assert_eq!(schema["properties"]["access_token"]["type"], "string");
+        assert_eq!(schema["properties"]["access_token"]["minLength"], 1);
+        assert_eq!(schema["properties"]["expires_at"]["type"], "integer");
+    }
+
+    #[test]
     fn subscription_authorization_is_host_owned_and_identity_bound() {
         let manifest: Value = serde_json::from_str(include_str!("../plugin.json")).unwrap();
         let adapter = &manifest["contributions"]["providers"][0]["oauth_adapter"];
