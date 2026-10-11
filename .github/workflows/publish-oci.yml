@@ -22,7 +22,21 @@ jobs:
         with:
           persist-credentials: false
       - name: Prepare checksum-pinned release bytes
+        if: github.event_name != 'pull_request'
         run: bash scripts/oci/prepare.sh
+      - uses: dtolnay/rust-toolchain@stable
+        if: github.event_name == 'pull_request'
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Prepare source candidate without publication
+        if: github.event_name == 'pull_request'
+        run: |
+          ./build.sh
+          mkdir -p "$RUNNER_TEMP/plugin-package"
+          cp plugin.json plugin.wasm "$RUNNER_TEMP/plugin-package/"
+          printf '{"format_version":1}\n' > "$RUNNER_TEMP/plugin-package/config.json"
+          cd "$RUNNER_TEMP/plugin-package"
+          sha256sum plugin.json plugin.wasm > SHA256SUMS
       - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
         with:
           name: oci-package-${{ github.sha }}

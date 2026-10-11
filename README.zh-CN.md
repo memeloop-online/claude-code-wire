@@ -19,6 +19,12 @@
 
 ## 登录与安装
 
+1.1.0 源码候选新增社区 provider `claude-code-subscription`，面向用户自有 Claude Code
+订阅，通过宿主通用手动 PKCE 授权，并由通用 Anthropic Messages 桥接 Codex Responses。
+目前仍有宿主接口阻塞，不能作为已可用账号方案启用；详见
+[宿主依赖与验收边界](docs/subscription-provider.md)。保留现有内建 provider。
+供应商仍会接收推理内容，移除 `metadata.user_id` 不代表零泄漏。
+
 订阅 OAuth 登录由 MTC 账号连接流程处理，并由账号所有者本人批准。插件不接收或管理订阅凭据。移除追踪字段不代表获得模型授权，也不能保证上游接受请求。
 
 使用同一份已审查 CI 构建物或 Release 中的 `plugin.wasm` 与 `plugin.json`。先在隔离环境验证宿主兼容性，再为账号启用。不要混用旧版指纹改写构建物、清单和当前组件。

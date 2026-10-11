@@ -19,6 +19,13 @@ Legacy fingerprint configuration is ignored; it never causes identity injection.
 
 ## Login and installation
 
+The 1.1.0 source candidate also declares the community `claude-code-subscription`
+provider for a user's own Claude Code subscription, with host-owned manual PKCE
+and Codex Responses translation through generic Anthropic Messages. It is not
+ready for account enablement: see [host dependencies and validation boundaries](docs/subscription-provider.md).
+The existing built-in provider remains available. Anthropic receives inference
+content; removing `metadata.user_id` does not guarantee zero leakage.
+
 OAuth login belongs to MTC's account connection flow and must be approved by the account owner. The plugin neither receives nor manages subscription credentials. Removing metadata does not establish account entitlement or guarantee that an upstream accepts a request.
 
 Use `plugin.wasm` and `plugin.json` from the same reviewed CI artifact or release. Validate against the target MTC version in an isolated environment before enabling it for an account. Do not combine old fingerprint-rewriting builds or manifests with this component.

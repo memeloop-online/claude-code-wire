@@ -33,6 +33,7 @@ jobs:
             SHA256SUMS
             README.md
             README.zh-CN.md
+            docs/subscription-provider.md
           if-no-files-found: error
 
   release:
