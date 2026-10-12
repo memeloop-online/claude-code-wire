@@ -120,6 +120,60 @@ mod tests {
     }
 
     #[test]
+    fn installer_pin_and_publisher_share_exact_cosign_contract() {
+        let record: Value =
+            serde_json::from_str(include_str!("../.github/oci-release.json")).unwrap();
+        let installer = &record["installer"];
+        assert_eq!(
+            installer["source_revision"],
+            "93bcc9d1d51133055ba48cfab2ae606efc2b4a97"
+        );
+        assert_eq!(
+            installer["digest"],
+            "sha256:0e9bec4cd0393e56b2ba382a48c5b1744339be2a41a828e0ab2ff7a185a61d52"
+        );
+        assert_eq!(installer["cosign_version"], "v3.1.3-mtc.4");
+        let publisher = include_str!("../scripts/oci/publish.sh");
+        let evidence = include_str!("../scripts/oci/evidence.py");
+        assert!(
+            publisher.contains("INSTALLER_COSIGN_VERSION=$(jq -er '.installer.cosign_version'")
+        );
+        assert!(
+            publisher.contains(
+                "--arg expected \"$INSTALLER_COSIGN_VERSION\" '.gitVersion == $expected'"
+            )
+        );
+        assert!(evidence.contains("read_json(\"cosign-version.json\")[\"gitVersion\"] == record[\"installer\"][\"cosign_version\"]"));
+        for consumer in [
+            publisher,
+            evidence,
+            include_str!("../scripts/oci/prepare.sh"),
+            include_str!("../.github/workflows/publish-oci.yml"),
+        ] {
+            assert!(!consumer.contains("v3.1.3-mtc."));
+            assert!(!consumer.contains("2cd0580f6546044dcb40f06ecf53b4271bba5bde"));
+            assert!(
+                !consumer
+                    .contains("df6908c6e736ec150e64882bba02ac474637fe9fe9e31cc6b9452f7e6c91d6c0")
+            );
+        }
+        for gate in [
+            "[[ \"$actual_revision\" == \"$INSTALLER_SOURCE_REVISION\" ]]",
+            "--mtc-cosign-runtime-check",
+            "--certificate-identity \"$SIGNING_IDENTITY\"",
+            "--certificate-oidc-issuer \"$SIGNING_ISSUER\"",
+            "not-the-signer.yml@refs/heads/master",
+            "grep -q '\"category\":\"signature\"'",
+        ] {
+            assert!(publisher.contains(gate));
+        }
+        assert!(
+            publisher.find("'.gitVersion == $expected'").unwrap()
+                < publisher.find("oras push").unwrap()
+        );
+    }
+
+    #[test]
     fn optional_refresh_token_schema_matches_host_null_serialization() {
         let manifest: Value = serde_json::from_str(include_str!("../plugin.json")).unwrap();
         let schema = &manifest["contributions"]["providers"][0]["credential_schema"];

@@ -52,11 +52,18 @@ The delegated owner's receipt binds the live installer index digest to its
 same-run artifact, raw image revision label and subject-bound SPDX/SLSA evidence.
 Its source-bound manifest schema supports the PR580 declarations and is compiled
 into the installer from the same release input. Only installer digest, source
-revision and evidence URL change; repository and signer policy remain unchanged.
+revision and evidence URL bind this artifact; repository and signer policy remain unchanged.
 PR assembly and UI-only artifacts were not used as substitutes. No guessed
 digest, schema relaxation or skipped validation is used. This receipt establishes
 artifact/schema provenance, not installation of plugin 1.1.0 or subscription
 runtime acceptance; neither was performed for this pin correction.
 Host/UI deployment and subscription entitlement remain separate acceptance.
+Final R2 identified a second consumer mismatch: the source-bound installer bundles
+Cosign `v3.1.3-mtc.4`, while the publisher still expected mtc.3. The exact expected
+version now lives in `installer.cosign_version` in the pin record; both the
+publisher gate and evidence validation consume that single value. A static
+contract in the existing native test suite binds this version to the reviewed
+installer source/digest and checks the consumers and retained safety gates.
+This closes the source mismatch without claiming the publisher has executed.
 Do not bypass signer trust, overwrite the source tag, or infer activation from
 GitHub Release availability.
