@@ -7,8 +7,8 @@
   },
   "installer": {
     "repository": "ghcr.io/memeloop-online/memeloop-token-center-plugin-installer",
-    "digest": "sha256:df6908c6e736ec150e64882bba02ac474637fe9fe9e31cc6b9452f7e6c91d6c0",
-    "source_revision": "2cd0580f6546044dcb40f06ecf53b4271bba5bde",
-    "evidence": "https://github.com/memeloop-online/memeloop-token-center/actions/runs/37108937447"
+    "digest": "sha256:0e9bec4cd0393e56b2ba382a48c5b1744339be2a41a828e0ab2ff7a185a61d52",
+    "source_revision": "93bcc9d1d51133055ba48cfab2ae606efc2b4a97",
+    "evidence": "https://github.com/memeloop-online/memeloop-token-center/actions/runs/38182879323"
   }
 }

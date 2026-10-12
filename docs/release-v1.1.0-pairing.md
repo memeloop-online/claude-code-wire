@@ -10,7 +10,8 @@ TEST/PROD activation, OAuth or inference. Subscription login is not verified.
 - Cargo and manifest versions: `1.1.0`.
 - Existing tag-triggered [CI run 38178017688](https://github.com/memeloop-online/claude-code-wire/actions/runs/38178017688): test and release jobs both succeeded.
 - [Actual Release](https://github.com/memeloop-online/claude-code-wire/releases/tag/v1.1.0) published at `2026-10-11T21:51:17Z`.
-- Workflows, permissions, signature gates and installer pin are unchanged.
+- Workflows, permissions and signature gates are unchanged. The installer pin
+  is updated to the compatible published source documented below.
 
 ## Downloaded assets
 
@@ -29,14 +30,33 @@ privacy implementation is unchanged; the manifest is different.
 
 ## Pending promotion boundary
 
-The pairing PR changes only the proposed release version/source/manifest hash;
+The release-byte pairing changes the proposed release version/source/manifest
+hash. R1 additionally requires a compatible, actually published installer pin;
 the old production pin remains unchanged until a separately approved merge.
 Merging this PR onto master triggers the existing automatic OCI signing and
 installer workflow and therefore must not be treated as a documentation-only
 action. No such merge or OCI publication was performed for this preparation.
 
-The retained installer pin is provenance for the existing packaging workflow,
-not evidence that its old host revision supports the new provider declarations.
-Host/UI compatibility and subscription entitlement require separate acceptance.
+R1 established a known failure: the original installer revision
+`2cd0580f6546044dcb40f06ecf53b4271bba5bde` rejects the new manifest's typed OAuth
+fields. The existing workflow pushes and signs before its installation check,
+so using that installer can leave a signed SHA artifact even though publication
+fails before the version alias update. PR packaging did not cover this failure.
+
+The replacement is the official installer produced after core PR582's normal
+merge at `93bcc9d1d51133055ba48cfab2ae606efc2b4a97` (including PR583):
+`ghcr.io/memeloop-online/memeloop-token-center-plugin-installer@sha256:0e9bec4cd0393e56b2ba382a48c5b1744339be2a41a828e0ab2ff7a185a61d52`.
+[Official run 38182879323](https://github.com/memeloop-online/memeloop-token-center/actions/runs/38182879323)
+succeeded, including both image publications and immutable release verification.
+The delegated owner's receipt binds the live installer index digest to its
+same-run artifact, raw image revision label and subject-bound SPDX/SLSA evidence.
+Its source-bound manifest schema supports the PR580 declarations and is compiled
+into the installer from the same release input. Only installer digest, source
+revision and evidence URL change; repository and signer policy remain unchanged.
+PR assembly and UI-only artifacts were not used as substitutes. No guessed
+digest, schema relaxation or skipped validation is used. This receipt establishes
+artifact/schema provenance, not installation of plugin 1.1.0 or subscription
+runtime acceptance; neither was performed for this pin correction.
+Host/UI deployment and subscription entitlement remain separate acceptance.
 Do not bypass signer trust, overwrite the source tag, or infer activation from
 GitHub Release availability.
