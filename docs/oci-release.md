@@ -14,7 +14,7 @@ The official certificate identity is exactly:
 https://github.com/memeloop-online/claude-code-wire/.github/workflows/publish-oci.yml@refs/heads/master
 ```
 
-The issuer is `https://token.actions.githubusercontent.com`. Candidate evidence records the exact branch identity instead; do not add it to production trust. The workflow extracts `v3.1.3-mtc.3` Cosign from the pinned installer, checks the image source revision and verifier compatibility, signs with GitHub OIDC, and preserves all default certificate, transparency-log, and signature checks. It uses the existing workflow token for GHCR; it neither creates credentials nor changes package visibility.
+The issuer is `https://token.actions.githubusercontent.com`. Candidate evidence records the exact branch identity instead; do not add it to production trust. The workflow extracts Cosign from the pinned installer and checks its exact version against `installer.cosign_version` in `.github/oci-release.json`, checks the image source revision and verifier compatibility, signs with GitHub OIDC, and preserves all default certificate, transparency-log, and signature checks. It uses the existing workflow token for GHCR; it neither creates credentials nor changes package visibility.
 
 ## Exact test/install plan
 

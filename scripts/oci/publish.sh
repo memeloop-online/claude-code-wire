@@ -6,6 +6,7 @@ export INSTALLER_SOURCE INSTALLER_DIGEST INSTALLER_SOURCE_REVISION PLUGIN_SOURCE
 INSTALLER_SOURCE=$(jq -er '.installer.repository' "$record")
 INSTALLER_DIGEST=$(jq -er '.installer.digest' "$record")
 INSTALLER_SOURCE_REVISION=$(jq -er '.installer.source_revision' "$record")
+INSTALLER_COSIGN_VERSION=$(jq -er '.installer.cosign_version' "$record")
 [[ "$INSTALLER_SOURCE" == ghcr.io/memeloop-online/memeloop-token-center-plugin-installer ]]
 [[ "$INSTALLER_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
 [[ "$INSTALLER_SOURCE_REVISION" =~ ^[a-f0-9]{40}$ ]]
@@ -23,7 +24,7 @@ trap 'docker rm "$container" >/dev/null; sudo rm -rf "$RUNNER_TEMP/plugin-regist
 docker cp "$container:/usr/local/bin/cosign" "$RUNNER_TEMP/plugin-tools/cosign"
 chmod 0555 "$RUNNER_TEMP/plugin-tools/cosign"
 export PATH="$RUNNER_TEMP/plugin-tools:$PATH"
-cosign version --json | tee "$evidence/cosign-version.json" | jq -e '.gitVersion == "v3.1.3-mtc.3"'
+cosign version --json | tee "$evidence/cosign-version.json" | jq -e --arg expected "$INSTALLER_COSIGN_VERSION" '.gitVersion == $expected'
 docker run --rm --entrypoint /usr/local/bin/install-plugin-oci \
   "$INSTALLER_SOURCE@$INSTALLER_DIGEST" --mtc-cosign-runtime-check
 

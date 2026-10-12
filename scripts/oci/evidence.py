@@ -46,6 +46,7 @@ for item in (installed, read_json("install-receipt.json")):
     assert item["digest"] == expected
     assert item["source"] == source
 assert read_json("install-receipt.json")["signature_policy"] == "cosign-keyless"
+assert read_json("cosign-version.json")["gitVersion"] == record["installer"]["cosign_version"]
 verification = read_json("plugin-signature-verification.json")
 assert isinstance(verification, list) and verification
 assert any(item["critical"]["image"]["docker-manifest-digest"] == expected for item in verification)
@@ -64,6 +65,7 @@ evidence = {
     "signature": {"policy": "cosign-keyless", "identity": identity, "issuer": issuer},
     "installer_reference": installer,
     "installer_source_revision": os.environ["INSTALLER_SOURCE_REVISION"],
+    "installer_cosign_version": record["installer"]["cosign_version"],
     "files": files,
     "installation_verified": True,
     "wrong_identity_rejected": True,
