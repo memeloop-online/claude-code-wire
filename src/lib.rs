@@ -126,11 +126,11 @@ mod tests {
         let installer = &record["installer"];
         assert_eq!(
             installer["source_revision"],
-            "93bcc9d1d51133055ba48cfab2ae606efc2b4a97"
+            "3dbf18898357cd00ab33e8a79523d85dd6a08367"
         );
         assert_eq!(
             installer["digest"],
-            "sha256:0e9bec4cd0393e56b2ba382a48c5b1744339be2a41a828e0ab2ff7a185a61d52"
+            "sha256:47872d7dffc26a1c1908fed395d7387d09534bbdddf4186c5d74d3479fbdf783"
         );
         assert_eq!(installer["cosign_version"], "v3.1.3-mtc.4");
         let publisher = include_str!("../scripts/oci/publish.sh");
